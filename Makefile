@@ -2,13 +2,18 @@ SOURCE_DIRECTORY := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 ARTIFACT_PATH := $(SOURCE_DIRECTORY)artifacts
 DOCS_PATH := $(SOURCE_DIRECTORY)docs
 CONFIGURATION ?= Release
-ADDITIONAL_ARGS ?= -p:ContinuousIntegrationBuild=true -warnAsError -warnNotAsError:NU1901,NU1902,NU1903,NU1904
+ADDITIONAL_ARGS ?= -p:ContinuousIntegrationBuild=true -warnAsError
 NUGET_SOURCE ?= "https://api.nuget.org/v3/index.json"
 NUGET_API_KEY ?= ""
 DOCKER_IMAGE_NAME ?= "polytype-docker-build"
 DOCKER_CMD ?= make pack
 VERSION_FILE = $(SOURCE_DIRECTORY)version.json
 VERSION ?= ""
+ENABLE_CODECOV ?= false
+
+ifeq ($(ENABLE_CODECOV),true)
+CODECOV_ARGS = --collect "Code Coverage;Format=cobertura"
+endif
 
 clean:
 	dotnet clean --configuration $(CONFIGURATION)
@@ -22,28 +27,35 @@ restore:
 build: restore
 	dotnet build --no-restore --configuration $(CONFIGURATION) $(ADDITIONAL_ARGS)
 
-test: build
-	dotnet test --configuration $(CONFIGURATION) $(SOURCE_DIRECTORY)/tests/PolyType.Roslyn.Tests \
-		--collect "Code Coverage;Format=cobertura"
+test-clr: build
+	dotnet test \
+		--configuration $(CONFIGURATION) \
+		$(ADDITIONAL_ARGS) \
+		--blame \
+		-p:SkipTUnitTestRuns=true \
+		--logger "trx" \
+		$(CODECOV_ARGS) \
+		--results-directory $(ARTIFACT_PATH)/testResults \
+		-- \
+		RunConfiguration.CollectSourceInformation=true
 
 test-aot: build
 	dotnet publish $(SOURCE_DIRECTORY)/tests/PolyType.Tests.NativeAOT/PolyType.Tests.NativeAOT.csproj \
 		$(ADDITIONAL_ARGS) \
-		-o $(ARTIFACT_PATH)/native-aot-tests
-
+		-o $(ARTIFACT_PATH)/native-aot-tests \
+	&& \
 	$(ARTIFACT_PATH)/native-aot-tests/PolyType.Tests.NativeAOT
 
-all-tests: test test-aot
+test: test-clr test-aot
 
-pack: all-tests
-	dotnet pack --configuration Release $(ADDITIONAL_ARGS)
+pack: build
+	dotnet pack --no-restore --configuration Release $(ADDITIONAL_ARGS)
 
 push:
 	dotnet nuget push $(ARTIFACT_PATH)/*.nupkg -s $(NUGET_SOURCE) -k $(NUGET_API_KEY)
 
-generate-docs: clean restore
-	dotnet build --no-restore --configuration Release $(ADDITIONAL_ARGS)
-	dotnet docfx $(DOCS_PATH)/docfx.json
+generate-docs: build
+	dotnet docfx $(DOCS_PATH)/docfx.json --warningsAsErrors true
 
 serve-docs: generate-docs
 	dotnet docfx serve $(ARTIFACT_PATH)/_site --port 8080
@@ -66,4 +78,4 @@ docker-build: clean
 
 	docker rmi -f $(DOCKER_IMAGE_NAME)
 
-.DEFAULT_GOAL := all-tests
+.DEFAULT_GOAL := test
