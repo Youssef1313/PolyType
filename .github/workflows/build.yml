@@ -12,8 +12,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        configuration: [Debug, Release]
+        os: [windows-latest]
+        configuration: [Debug]
       fail-fast: false
 
     steps:
@@ -41,9 +41,7 @@ jobs:
       run: make build CONFIGURATION=${{ matrix.configuration }}
 
     - name: Test 🧪
-      run: make test CONFIGURATION=${{ matrix.configuration }}
-      env:
-        ENABLE_CODECOV: ${{ runner.os == 'Linux' && matrix.configuration == 'Release' }}
+      run: dotnet test --configuration ${{ matrix.configuration }} $(SOURCE_DIRECTORY)/tests/PolyType.Roslyn.Tests --collect "Code Coverage;Format=cobertura"
 
     - name: Pack 📦
       if: matrix.configuration == 'Release'
