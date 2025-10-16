@@ -41,7 +41,7 @@ jobs:
     #   run: make build CONFIGURATION=${{ matrix.configuration }}
 
     - name: Test 🧪
-      run: dotnet test --configuration ${{ matrix.configuration }} $(SOURCE_DIRECTORY)/tests/PolyType.Roslyn.Tests --collect "Code Coverage;Format=cobertura" --diag:artifacts/log.txt
+      run: dotnet test --configuration ${{ matrix.configuration }} tests/PolyType.Roslyn.Tests --collect "Code Coverage;Format=cobertura" --diag:artifacts/log.txt
 
     - name: Pack 📦
       if: matrix.configuration == 'Release'
