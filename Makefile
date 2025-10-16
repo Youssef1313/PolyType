@@ -11,9 +11,7 @@ VERSION_FILE = $(SOURCE_DIRECTORY)version.json
 VERSION ?= ""
 ENABLE_CODECOV ?= false
 
-ifeq ($(ENABLE_CODECOV),true)
 CODECOV_ARGS = --collect "Code Coverage;Format=cobertura"
-endif
 
 clean:
 	dotnet clean --configuration $(CONFIGURATION)
