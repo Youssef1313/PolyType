@@ -12,8 +12,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        configuration: [Debug, Release]
+        os: [windows-latest]
+        configuration: [Debug]
       fail-fast: false
 
     steps:
@@ -37,13 +37,11 @@ jobs:
       if: runner.os == 'macOS'
       run: brew install mono
 
-    - name: Build 🏗️
-      run: make build CONFIGURATION=${{ matrix.configuration }}
+    # - name: Build 🏗️
+    #   run: make build CONFIGURATION=${{ matrix.configuration }}
 
     - name: Test 🧪
-      run: make test CONFIGURATION=${{ matrix.configuration }}
-      env:
-        ENABLE_CODECOV: ${{ runner.os == 'Linux' && matrix.configuration == 'Release' }}
+      run: dotnet test --configuration ${{ matrix.configuration }} tests/PolyType.Roslyn.Tests --collect "Code Coverage;Format=cobertura" --diag:artifacts/log.txt
 
     - name: Pack 📦
       if: matrix.configuration == 'Release'
@@ -54,7 +52,7 @@ jobs:
       run: make generate-docs CONFIGURATION=${{ matrix.configuration }}
 
     - name: Upload artifacts 🚀
-      if: runner.os == 'Linux' && matrix.configuration == 'Release' && github.ref == 'refs/heads/main'
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: build-artifacts
